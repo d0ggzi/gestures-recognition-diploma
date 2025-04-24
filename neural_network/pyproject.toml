@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "neural-network"
+version = "0.1.0"
+description = ""
+authors = ["dggz <maks-laptev.03@mail.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+tensorflow = "^2.19.0"
+opencv-python = "^4.11.0.86"
+scikit-learn = "^1.6.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
