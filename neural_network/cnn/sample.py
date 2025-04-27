@@ -7,16 +7,51 @@ from collections import deque
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization, GlobalAveragePooling2D
 
 # === Параметры ===
 IMG_SIZE = (64, 64)
-EPOCHS = 20
+EPOCHS = 50
 BATCH_SIZE = 32
 SMOOTHING_WINDOW = 5
 MODEL_PATH = "gesture_cnn.h5"
+
+def build_advanced_cnn(input_shape, num_classes):
+    model = Sequential()
+
+    # Блок 1
+    model.add(Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=input_shape))
+    model.add(BatchNormalization())
+    model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Dropout(0.25))
+
+    # Блок 2
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Dropout(0.3))
+
+    # Блок 3
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Dropout(0.4))
+
+    # Глобальный пуллинг и полносвязные слои
+    model.add(GlobalAveragePooling2D())
+    model.add(Dense(256, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(num_classes, activation='softmax'))
+
+    return model
 
 # === Загрузка данных ===
 def load_data(dataset_dir):
@@ -40,7 +75,7 @@ def load_data(dataset_dir):
     return X, y
 
 print("Загрузка датасета...")
-X, y = load_data("../../data/gestures/augmentated")
+X, y = load_data("../../data/gestures")
 print("Датасет загружен:", X.shape)
 
 le = LabelEncoder()
@@ -49,24 +84,14 @@ y_cat = to_categorical(y_enc)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y_cat, test_size=0.2, stratify=y_cat)
 
+input_shape = (IMG_SIZE[0], IMG_SIZE[1], 1)
+num_classes = len(le.classes_)
+
 # === Создание модели ===
 if not os.path.exists(MODEL_PATH):
     print("Обучение модели...")
-    model = Sequential([
-        Conv2D(32, (3,3), activation='relu', input_shape=(IMG_SIZE[0], IMG_SIZE[1], 1)),
-        MaxPooling2D((2,2)),
-        Dropout(0.25),
-
-        Conv2D(64, (3,3), activation='relu'),
-        MaxPooling2D((2,2)),
-        Dropout(0.3),
-
-        Flatten(),
-        Dense(128, activation='relu'),
-        Dropout(0.5),
-        Dense(len(le.classes_), activation='softmax')
-    ])
-    model.compile(optimizer=Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+    model = build_advanced_cnn(input_shape, num_classes)
+    model.compile(optimizer=Adam(learning_rate=0.0005), loss='categorical_crossentropy', metrics=['accuracy'])
     model.fit(X_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE, validation_data=(X_test, y_test))
     model.save(MODEL_PATH)
     print("Модель сохранена")

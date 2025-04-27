@@ -101,7 +101,7 @@ def load_data(dataset_dir):
     return np.array(X), np.array(y)
 
 # === Основная часть ===
-DATASET_DIR = "../../data/gestures/augmentated"
+DATASET_DIR = "../../data/gestures"
 X, y = load_data(DATASET_DIR)
 print(f"Загружено {len(y)} изображений из датасета")
 

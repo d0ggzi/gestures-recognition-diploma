@@ -38,7 +38,7 @@ def load_data(dataset_dir):
     return X, y
 
 print("Загрузка датасета...")
-X, y = load_data("../../data/gestures/augmentated")
+X, y = load_data("../../data/gestures")
 print("Датасет загружен:", X.shape)
 
 le = LabelEncoder()
