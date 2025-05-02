@@ -7,6 +7,7 @@ from collections import deque
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import LabelEncoder
@@ -19,6 +20,7 @@ HOG_ORIENTATIONS = 9
 HOG_PIXELS_PER_CELL = (16, 16)
 HOG_CELLS_PER_BLOCK = (2, 2)
 SMOOTHING_WINDOW = 5  # размер окна для сглаживания предсказаний
+KNN_NEIGHBORS = 50     # число соседей для KNN
 
 # === Функция сегментации руки ===
 def segment_hand(frame):
@@ -73,7 +75,7 @@ def load_data(dataset_dir):
     return np.array(X), np.array(y)
 
 # === Основная часть ===
-DATASET_DIR = "../../data/gestures"
+DATASET_DIR = "../data/gestures"
 X, y = load_data(DATASET_DIR)
 print(f"Загружено {len(y)} изображений из датасета")
 
@@ -93,16 +95,24 @@ pca = PCA(n_components=PCA_COMPONENTS)
 X_train = pca.fit_transform(X_train)
 X_test = pca.transform(X_test)
 
+
 # Обучение SVM
-svm = SVC(kernel='rbf', C=1.0, gamma='scale')
-svm.fit(X_train, y_train)
+# svm = SVC(kernel='rbf', C=1.0, gamma='scale')
+# svm.fit(X_train, y_train)
+#
+# # Оценка
+# y_pred = svm.predict(X_test)
+
+# # Обучение KNN
+knn = KNeighborsClassifier(n_neighbors=KNN_NEIGHBORS)
+knn.fit(X_train, y_train)
 
 # Оценка
-y_pred = svm.predict(X_test)
+y_pred = knn.predict(X_test)
 print("Точность на тесте:", accuracy_score(y_test, y_pred))
 print(classification_report(y_test, y_pred, target_names=le.classes_))
 
-# === Распознавание в реальном времени ===
+
 def realtime_recognition():
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -132,7 +142,8 @@ def realtime_recognition():
             feat = extract_hog(roi)
             feat_norm = scaler.transform([feat])
             feat_pca = pca.transform(feat_norm)
-            pred = svm.predict(feat_pca)[0]
+            # pred = svm.predict(feat_pca)[0]
+            pred = knn.predict(feat_pca)[0]
             history.append(pred)
             # сглаживание по окну
             most_common = max(set(history), key=history.count)
