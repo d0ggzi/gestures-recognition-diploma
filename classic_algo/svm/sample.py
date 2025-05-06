@@ -10,51 +10,44 @@ from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from skimage.feature import hog
 
-# Параметры
 IMAGE_SIZE = (128, 128)
 PCA_COMPONENTS = 50
 HOG_ORIENTATIONS = 9
 HOG_PIXELS_PER_CELL = (16, 16)
 HOG_CELLS_PER_BLOCK = (2, 2)
-SMOOTHING_WINDOW = 5  # размер окна для сглаживания предсказаний
+SMOOTHING_WINDOW = 5
 
-# === Функция сегментации руки ===
+
 def segment_hand(frame):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    # Диапазоны для маски кожи
     lower_hsv = np.array([100, 20, 70])
     upper_hsv = np.array([180, 100, 200])
 
-    # Две маски по HSV и YCrCb
     mask = cv2.inRange(hsv, lower_hsv, upper_hsv)
 
-    # Морфология: удаление шумов и замыкание дыр
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=3)
 
-    # Поиск контуров
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return None
 
-    # Самый большой контур по площади
     largest = max(contours, key=cv2.contourArea)
     area = cv2.contourArea(largest)
     img_area = frame.shape[0] * frame.shape[1]
 
-    # Фильтрация по размеру: не слишком маленький и не слишком большой контур
     if area < 1000 or area > 0.8 * img_area:
         return None
 
     x, y, w, h = cv2.boundingRect(largest)
     cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-    roi = frame[y:y+h, x:x+w]
+    roi = frame[y:y + h, x:x + w]
     return roi if roi.size > 0 else None
 
-# === Извлечение признаков HOG ===
+
 def extract_hog(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     resized = cv2.resize(gray, IMAGE_SIZE)
@@ -67,7 +60,7 @@ def extract_hog(img):
     )
     return features
 
-# === Загрузка и подготовка датасета ===
+
 def load_data(dataset_dir):
     X, y = [], []
     classes = [d for d in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir, d))]
@@ -88,7 +81,7 @@ def load_data(dataset_dir):
             y.append(label)
     return np.array(X), np.array(y)
 
-# === Основная часть ===
+
 DATASET_DIR = "../../data/gestures"
 X, y = load_data(DATASET_DIR)
 print(f"Загружено {len(y)} изображений из датасета")
@@ -99,17 +92,14 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y_enc, test_size=0.2, random_state=42
 )
 
-# Нормализация признаков
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-# Снижение размерности
 pca = PCA(n_components=PCA_COMPONENTS)
 X_train = pca.fit_transform(X_train)
 X_test = pca.transform(X_test)
 
-# Обучение SVM
 svm = SVC(kernel='rbf', C=1.0, gamma='scale')
 svm.fit(X_train, y_train)
 
@@ -118,7 +108,7 @@ y_pred = svm.predict(X_test)
 print("Точность на тесте:", accuracy_score(y_test, y_pred))
 print(classification_report(y_test, y_pred, target_names=le.classes_))
 
-# === Распознавание в реальном времени ===
+
 def realtime_recognition():
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
@@ -137,14 +127,12 @@ def realtime_recognition():
             feat_pca = pca.transform(feat_norm)
             pred = svm.predict(feat_pca)[0]
             history.append(pred)
-            # сглаживание по окну
             most_common = max(set(history), key=history.count)
             gesture = le.inverse_transform([most_common])[0]
             cv2.putText(
                 frame, f"Gesture: {gesture}", (10, 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2
             )
-            # показываем ROI
             disp = cv2.resize(roi, (128, 128))
             frame[10:138, 10:138] = disp
         else:
@@ -157,6 +145,7 @@ def realtime_recognition():
             break
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     realtime_recognition()

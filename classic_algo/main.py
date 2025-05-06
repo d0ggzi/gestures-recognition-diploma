@@ -19,10 +19,11 @@ PCA_COMPONENTS = 50
 HOG_ORIENTATIONS = 9
 HOG_PIXELS_PER_CELL = (16, 16)
 HOG_CELLS_PER_BLOCK = (2, 2)
-SMOOTHING_WINDOW = 5  # размер окна для сглаживания предсказаний
-KNN_NEIGHBORS = 50     # число соседей для KNN
+SMOOTHING_WINDOW = 5
+KNN_NEIGHBORS = 150
+DATASET_DIR = "../data/mine-gestures/augmentated"
 
-# === Функция сегментации руки ===
+
 def segment_hand(frame):
     ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCrCb)
     cr = ycrcb[:, :, 1]
@@ -38,9 +39,9 @@ def segment_hand(frame):
         return None
     x, y, w, h = cv2.boundingRect(largest)
     cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-    return frame[y:y+h, x:x+w]
+    return frame[y:y + h, x:x + w]
 
-# === Извлечение признаков HOG ===
+
 def extract_hog(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     resized = cv2.resize(gray, IMAGE_SIZE)
@@ -53,7 +54,7 @@ def extract_hog(img):
     )
     return features
 
-# === Загрузка и подготовка датасета ===
+
 def load_data(dataset_dir):
     X, y = [], []
     classes = [d for d in os.listdir(dataset_dir) if os.path.isdir(os.path.join(dataset_dir, d))]
@@ -74,53 +75,13 @@ def load_data(dataset_dir):
             y.append(label)
     return np.array(X), np.array(y)
 
-# === Основная часть ===
-DATASET_DIR = "../data/gestures"
-X, y = load_data(DATASET_DIR)
-print(f"Загружено {len(y)} изображений из датасета")
 
-le = LabelEncoder()
-y_enc = le.fit_transform(y)
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y_enc, test_size=0.2
-)
-
-# Нормализация признаков
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
-
-# Снижение размерности
-pca = PCA(n_components=PCA_COMPONENTS)
-X_train = pca.fit_transform(X_train)
-X_test = pca.transform(X_test)
-
-
-# Обучение SVM
-# svm = SVC(kernel='rbf', C=1.0, gamma='scale')
-# svm.fit(X_train, y_train)
-#
-# # Оценка
-# y_pred = svm.predict(X_test)
-
-# # Обучение KNN
-knn = KNeighborsClassifier(n_neighbors=KNN_NEIGHBORS)
-knn.fit(X_train, y_train)
-
-# Оценка
-y_pred = knn.predict(X_test)
-print("Точность на тесте:", accuracy_score(y_test, y_pred))
-print(classification_report(y_test, y_pred, target_names=le.classes_))
-
-
-def realtime_recognition():
+def realtime_recognition(scaler, pca, model):
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("Не удалось открыть камеру")
         return
     history = deque(maxlen=SMOOTHING_WINDOW)
-    print("Нажмите 'q' для выхода")
-
     prev_time = time.time()
     frame_counter = 0
     fps = 0
@@ -142,10 +103,8 @@ def realtime_recognition():
             feat = extract_hog(roi)
             feat_norm = scaler.transform([feat])
             feat_pca = pca.transform(feat_norm)
-            # pred = svm.predict(feat_pca)[0]
-            pred = knn.predict(feat_pca)[0]
+            pred = model.predict(feat_pca)[0]
             history.append(pred)
-            # сглаживание по окну
             most_common = max(set(history), key=history.count)
             gesture = le.inverse_transform([most_common])[0]
             cv2.putText(frame, f"Gesture: {gesture}", (10, 50),
@@ -163,5 +122,29 @@ def realtime_recognition():
     cap.release()
     cv2.destroyAllWindows()
 
+
 if __name__ == "__main__":
-    realtime_recognition()
+    X, y = load_data(DATASET_DIR)
+    print(f"Загружено {len(y)} изображений из датасета")
+    le = LabelEncoder()
+    y_enc = le.fit_transform(y)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y_enc, test_size=0.2
+    )
+
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    pca = PCA(n_components=PCA_COMPONENTS)
+    X_train = pca.fit_transform(X_train)
+    X_test = pca.transform(X_test)
+
+    # model = SVC(kernel='rbf', C=1.0, gamma='scale')  # SVM
+    model = KNeighborsClassifier(n_neighbors=KNN_NEIGHBORS)  # KNN
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    print("Точность на тесте:", accuracy_score(y_test, y_pred))
+    print(classification_report(y_test, y_pred, target_names=le.classes_))
+    realtime_recognition(scaler, pca, model)

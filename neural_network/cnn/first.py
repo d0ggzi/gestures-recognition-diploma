@@ -17,6 +17,7 @@ BATCH_SIZE = 32
 SMOOTHING_WINDOW = 5
 MODEL_PATH = "gesture_cnn.h5"
 
+
 def load_data(dataset_dir):
     X, y = [], []
     for label in os.listdir(dataset_dir):
@@ -37,6 +38,7 @@ def load_data(dataset_dir):
     y = np.array(y)
     return X, y
 
+
 print("Загрузка датасета...")
 X, y = load_data("../../data/gestures")
 print("Датасет загружен:", X.shape)
@@ -50,12 +52,12 @@ X_train, X_test, y_train, y_test = train_test_split(X, y_cat, test_size=0.2, str
 if not os.path.exists(MODEL_PATH):
     print("Обучение модели...")
     model = Sequential([
-        Conv2D(32, (3,3), activation='relu', input_shape=(IMG_SIZE[0], IMG_SIZE[1], 1)),
-        MaxPooling2D((2,2)),
+        Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_SIZE[0], IMG_SIZE[1], 1)),
+        MaxPooling2D((2, 2)),
         Dropout(0.25),
 
-        Conv2D(64, (3,3), activation='relu'),
-        MaxPooling2D((2,2)),
+        Conv2D(64, (3, 3), activation='relu'),
+        MaxPooling2D((2, 2)),
         Dropout(0.3),
 
         Flatten(),
@@ -70,6 +72,7 @@ if not os.path.exists(MODEL_PATH):
 else:
     print("Загрузка обученной модели...")
     model = load_model(MODEL_PATH)
+
 
 def realtime_recognition():
     cap = cv2.VideoCapture(0)
@@ -104,7 +107,7 @@ def realtime_recognition():
             prev_time = curr_time
             frame_counter = 0
 
-        cv2.putText(frame, f"Gesture: {gesture} ({confidence*100:.1f}%)", (10, 50),
+        cv2.putText(frame, f"Gesture: {gesture} ({confidence * 100:.1f}%)", (10, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
         cv2.putText(frame, f"FPS: {fps:.1f}", (10, 90),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
@@ -115,6 +118,7 @@ def realtime_recognition():
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     realtime_recognition()

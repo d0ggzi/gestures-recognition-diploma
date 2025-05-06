@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "diploma"
+name = "frameworks"
 version = "0.1.0"
 description = ""
 authors = ["dggz <maks-laptev.03@mail.ru>"]
@@ -7,11 +7,9 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-opencv-python = "^4.11.0.86"
-matplotlib = "3.9.0"
 scikit-learn = "^1.6.1"
-augmentor = "^0.2.12"
-scikit-image = "^0.25.2"
+opencv-python = "^4.11.0.86"
+mediapipe = "^0.10.21"
 
 
 [build-system]

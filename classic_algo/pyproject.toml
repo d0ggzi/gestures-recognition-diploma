@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "diploma"
+name = "classic_algo"
 version = "0.1.0"
 description = ""
 authors = ["dggz <maks-laptev.03@mail.ru>"]
